@@ -218,7 +218,7 @@ function roundCoord(value) {
       el('div', { class: 'location-name' }, locationLabel(location)),
       el('div', { class: 'location-meta' }, bits.filter((b, i, arr) => arr.indexOf(b) === i).join(' · ')),
     ];
-    const href = location.mapsUrl || mapsLink(location);
+    const href = mapsLink(location);
     if (href) {
       children.push(el('a', {
         href,

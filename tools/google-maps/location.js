@@ -113,36 +113,44 @@ export function parseMapsUrl(input) {
   };
 }
 
+/**
+ * Share / QR / panel link. When coordinates exist (dropped pin), always open
+ * Google Maps at that exact lat/lng — never re-resolve via address or place id.
+ */
 export function mapsLink(location) {
-  if (location.mapsUrl) return location.mapsUrl;
+  if (isValidCoords(location.lat, location.lng)) {
+    const lat = roundCoord(location.lat);
+    const lng = roundCoord(location.lng);
+    return `https://www.google.com/maps?q=${lat},${lng}`;
+  }
   if (location.placeId) {
     return `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(location.placeId)}`;
   }
-  if (isValidCoords(location.lat, location.lng)) {
-    const q = location.address
-      ? encodeURIComponent(location.address)
-      : `${location.lat},${location.lng}`;
-    return `https://www.google.com/maps/search/?api=1&query=${q}`;
-  }
+  if (location.mapsUrl) return location.mapsUrl;
   if (location.address) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.address)}`;
   }
   return '';
 }
 
+/** Embed iframe src pinned to the same coordinates as the dropped pin when possible. */
 export function embedSrc(location, apiKey = '') {
   const key = (apiKey || '').trim();
   if (key) {
     const params = new URLSearchParams({ key });
-    if (location.placeId) params.set('q', `place_id:${location.placeId}`);
-    else if (location.address) params.set('q', location.address);
-    else if (isValidCoords(location.lat, location.lng)) {
-      params.set('q', `${location.lat},${location.lng}`);
+    if (isValidCoords(location.lat, location.lng)) {
+      params.set('q', `${roundCoord(location.lat)},${roundCoord(location.lng)}`);
+    } else if (location.placeId) {
+      params.set('q', `place_id:${location.placeId}`);
+    } else if (location.address) {
+      params.set('q', location.address);
     } else return '';
     return `https://www.google.com/maps/embed/v1/place?${params}`;
   }
   if (isValidCoords(location.lat, location.lng)) {
-    return `https://maps.google.com/maps?q=${location.lat},${location.lng}&z=15&output=embed`;
+    const lat = roundCoord(location.lat);
+    const lng = roundCoord(location.lng);
+    return `https://maps.google.com/maps?q=${lat},${lng}&z=17&output=embed`;
   }
   if (location.address) {
     return `https://maps.google.com/maps?q=${encodeURIComponent(location.address)}&z=15&output=embed`;
@@ -328,6 +336,8 @@ export function placeToLocation(place) {
     lat: loc ? loc.lat() : null,
     lng: loc ? loc.lng() : null,
     placeId: place.place_id || '',
-    mapsUrl: place.url || '',
+    // Prefer geometry coordinates for share links; do not keep place.url
+    // (it can open a different venue than the pin).
+    mapsUrl: '',
   };
 }

@@ -145,9 +145,7 @@ function roundCoord(value) {
     if (!state.location) return;
     setStatus(status, 'Preparing…');
     try {
-      const html = await buildInsertHtml(state.location, state.format, {
-        apiKey: state.settings.apiKey,
-      });
+      const html = await buildInsertHtml(state.location, state.format);
       state.result = html;
       state.resultMeta = {
         format: state.format,
@@ -463,7 +461,7 @@ function roundCoord(value) {
     notice.hidden = hasKey || state.loadFailed;
     notice.textContent = hasKey
       ? ''
-      : 'No Google Maps API key yet. You can still paste a Maps URL or enter coordinates. Open Settings to enable the interactive map, place search, and Embed API.';
+      : 'No Google Maps API key yet. You can still paste a Maps URL or enter coordinates. Open Settings to enable the interactive map and place search.';
     if (hasKey) {
       setupAutocomplete();
       ensureMap();
@@ -527,7 +525,7 @@ function roundCoord(value) {
       {},
       el('h2', {}, 'Insert as'),
       formatChips,
-      el('p', { class: 'hint' }, 'Address text, coordinates, Maps link, QR code, or an embedded map.'),
+      el('p', { class: 'hint' }, 'Address text, coordinates, Maps link, or QR code.'),
     ),
     status,
     resultSection,
@@ -630,7 +628,7 @@ function roundCoord(value) {
     el(
       'p',
       { class: 'hint' },
-      `This API key applies to everyone in ${org}. It is stored in the "secrets" sheet of the organisation's da.live config. Enable Maps JavaScript API, Places API, Geocoding API, and Maps Embed API. Prefer HTTP-referrer restrictions that allow da.live and your site.`,
+      `This API key applies to everyone in ${org}. It is stored in the "secrets" sheet of the organisation's da.live config. Enable Maps JavaScript API, Places API, and Geocoding API. Prefer HTTP-referrer restrictions that allow da.live and your site.`,
     ),
     el(
       'form',

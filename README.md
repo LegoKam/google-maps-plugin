@@ -1,6 +1,6 @@
 # Google Maps — Experience Workspace plugin
 
-An Edge Delivery Services / Experience Workspace plugin that lets authors find a place and insert it into the document as an address, coordinates, Google Maps link, QR code, or embedded map.
+An Edge Delivery Services / Experience Workspace plugin that lets authors find a place and insert it into the document as an address, coordinates, Google Maps link, or QR code.
 
 Plugin files live in [`tools/google-maps/`](tools/google-maps/).
 
@@ -22,10 +22,9 @@ Replace `LegoKam` / `google-maps-plugin` with your org and site names if this re
   - **Coordinates** — `lat, lng`
   - **Link** — linked place name opening Google Maps
   - **QR code** — QR image pointing at the Maps URL, plus the link
-  - **Embed map** — interactive iframe (Maps Embed API when a key is set)
 - **Org-wide settings** — Google Maps API key stored in the organisation’s da.live `secrets` sheet
 
-Without an API key you can still paste a Maps URL or type coordinates and insert address / link / QR / classic embed. The interactive map, autocomplete, geocoding, and Embed API need a key.
+Without an API key you can still paste a Maps URL or type coordinates and insert address / link / QR. The interactive map, autocomplete, and geocoding need a key.
 
 ## Install
 
@@ -72,7 +71,7 @@ Open **Panels → Extensions → Google Maps**.
 ## Configure Google Maps
 
 1. In [Google Cloud Console](https://console.cloud.google.com/) create (or reuse) a project with billing enabled.
-2. Enable **Maps JavaScript API**, **Places API**, **Geocoding API**, and **Maps Embed API**.
+2. Enable **Maps JavaScript API**, **Places API**, and **Geocoding API**.
 3. Create an API key. Restrict it with HTTP referrers that include `https://da.live/*`, your `*.aem.page` / `*.aem.live` hosts, and `http://localhost:3000/*` for local work.
 4. In the plugin, open **Settings**, paste the key, **Test key**, then **Save**.
 
@@ -88,7 +87,7 @@ You can also edit that sheet directly at [da.live/config#/legokam/](https://da.l
 
 ![Organisation secrets sheet with google-maps.api-key](docs/readme/secrets.png)
 
-**Security note:** anyone who can read the org config can read the API key. Embed iframes also include the key in the document HTML (normal for Maps Embed API); keep referrer restrictions tight.
+**Security note:** anyone who can read the org config can read the API key. Prefer HTTP-referrer restrictions on the key.
 
 If the config editor tab was already open when you saved from the plugin, reload it before pressing Save there — a stale empty sheet can overwrite the plugin’s rows.
 
@@ -96,7 +95,7 @@ If the config editor tab was already open when you saved from the plugin, reload
 
 1. Open the Google Maps panel in Experience Workspace.
 2. Find a place: search (pick a suggestion), enter coordinates, paste a Maps URL, or **click the map to drop a pin** (drag to adjust). Use **Overview** / **Satellite** / **Hybrid** for map layers.
-3. Choose **Insert as**: Address, Coordinates, Link, QR code, or Embed map.
+3. Choose **Insert as**: Address, Coordinates, Link, or QR code.
 4. **Insert at cursor**, or **Replace selection** / **Insert after selection** when text is selected.
 
 ## Develop

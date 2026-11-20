@@ -7,7 +7,6 @@ export const FORMATS = [
   { id: 'coordinates', label: 'Coordinates' },
   { id: 'link', label: 'Link' },
   { id: 'qr', label: 'QR code' },
-  { id: 'embed', label: 'Embed map' },
 ];
 
 const COORD_RE = /^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/;
@@ -133,31 +132,6 @@ export function mapsLink(location) {
   return '';
 }
 
-/** Embed iframe src pinned to the same coordinates as the dropped pin when possible. */
-export function embedSrc(location, apiKey = '') {
-  const key = (apiKey || '').trim();
-  if (key) {
-    const params = new URLSearchParams({ key });
-    if (isValidCoords(location.lat, location.lng)) {
-      params.set('q', `${roundCoord(location.lat)},${roundCoord(location.lng)}`);
-    } else if (location.placeId) {
-      params.set('q', `place_id:${location.placeId}`);
-    } else if (location.address) {
-      params.set('q', location.address);
-    } else return '';
-    return `https://www.google.com/maps/embed/v1/place?${params}`;
-  }
-  if (isValidCoords(location.lat, location.lng)) {
-    const lat = roundCoord(location.lat);
-    const lng = roundCoord(location.lng);
-    return `https://maps.google.com/maps?q=${lat},${lng}&z=17&output=embed`;
-  }
-  if (location.address) {
-    return `https://maps.google.com/maps?q=${encodeURIComponent(location.address)}&z=15&output=embed`;
-  }
-  return '';
-}
-
 export function locationLabel(location) {
   return location.address
     || location.name
@@ -205,14 +179,8 @@ async function qrHtml(location) {
 <p><a href="${escapeHtml(href)}">${escapeHtml(label)}</a></p>`;
 }
 
-function embedHtml(location, apiKey) {
-  const src = embedSrc(location, apiKey);
-  if (!src) throw new Error('Could not build an embed URL for this location.');
-  return `<iframe src="${escapeHtml(src)}" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" title="Map: ${escapeHtml(locationLabel(location))}"></iframe>`;
-}
-
 /** Build the HTML snippet that will be inserted into the document. */
-export async function buildInsertHtml(location, format, { apiKey = '' } = {}) {
+export async function buildInsertHtml(location, format) {
   switch (format) {
     case 'address':
       return addressHtml(location);
@@ -222,8 +190,6 @@ export async function buildInsertHtml(location, format, { apiKey = '' } = {}) {
       return linkHtml(location);
     case 'qr':
       return qrHtml(location);
-    case 'embed':
-      return embedHtml(location, apiKey);
     default:
       throw new Error(`Unknown format: ${format}`);
   }
@@ -238,7 +204,6 @@ export function formatSummary(location, format) {
       : `Coordinates unavailable for ${label}`,
     link: `Link: ${label}`,
     qr: `QR code → ${label}`,
-    embed: `Embed map: ${label}`,
   };
   return titles[format] || label;
 }

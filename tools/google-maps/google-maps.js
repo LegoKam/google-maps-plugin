@@ -101,7 +101,6 @@ function roundCoord(value) {
     { class: 'hint' },
     'Add a Google Maps API key in Settings to show the interactive map, drop a pin, and switch layers.',
   );
-  const insertBtn = el('button', { type: 'button', class: 'primary', disabled: true }, 'Insert');
   const status = el('p', { class: 'status', role: 'status', hidden: true });
   const resultPreview = el('div', { class: 'result-preview' });
   const resultActions = el('div', { class: 'actions' });
@@ -126,24 +125,24 @@ function roundCoord(value) {
 
   function renderResultActions() {
     const hasSelection = !!state.selection;
-    resultActions.replaceChildren(
+    const buttons = [
       el('button', {
         type: 'button',
         class: 'primary',
         onclick: () => applyResult(hasSelection ? 'replace' : 'insert'),
       }, hasSelection ? 'Replace selection' : 'Insert at cursor'),
-      hasSelection
-        ? el('button', {
-          type: 'button',
-          onclick: () => applyResult('insert-after'),
-        }, 'Insert after selection')
-        : null,
-    );
+    ];
+    if (hasSelection) {
+      buttons.push(el('button', {
+        type: 'button',
+        onclick: () => applyResult('insert-after'),
+      }, 'Insert after selection'));
+    }
+    resultActions.replaceChildren(...buttons);
   }
 
   async function prepareInsert() {
     if (!state.location) return;
-    insertBtn.disabled = true;
     setStatus(status, 'Preparing…');
     try {
       const html = await buildInsertHtml(state.location, state.format, {
@@ -162,8 +161,6 @@ function roundCoord(value) {
       state.result = '';
       resultSection.hidden = true;
       setStatus(status, error.message, 'error');
-    } finally {
-      insertBtn.disabled = !state.location;
     }
   }
 
@@ -209,7 +206,6 @@ function roundCoord(value) {
         {},
         'No place selected yet. Search, drop a pin on the map, enter coordinates, or paste a Google Maps link.',
       ));
-      insertBtn.disabled = true;
       return;
     }
 
@@ -218,18 +214,19 @@ function roundCoord(value) {
     if (isValidCoords(location.lat, location.lng)) {
       bits.push(`${roundCoord(location.lat)}, ${roundCoord(location.lng)}`);
     }
-    locationCard.replaceChildren(
+    const children = [
       el('div', { class: 'location-name' }, locationLabel(location)),
       el('div', { class: 'location-meta' }, bits.filter((b, i, arr) => arr.indexOf(b) === i).join(' · ')),
-      location.mapsUrl || mapsLink(location)
-        ? el('a', {
-          href: location.mapsUrl || mapsLink(location),
-          target: '_blank',
-          rel: 'noopener noreferrer',
-        }, 'Open in Google Maps')
-        : null,
-    );
-    insertBtn.disabled = false;
+    ];
+    const href = location.mapsUrl || mapsLink(location);
+    if (href) {
+      children.push(el('a', {
+        href,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+      }, 'Open in Google Maps'));
+    }
+    locationCard.replaceChildren(...children);
   }
 
   function setLocation(location, { syncPin = true, pan = true } = {}) {
@@ -483,8 +480,6 @@ function roundCoord(value) {
       resolveFromSearch();
     }
   });
-  insertBtn.addEventListener('click', prepareInsert);
-
   const settingsView = el('main', { class: 'view', hidden: true });
   const mainView = el(
     'main',
@@ -534,7 +529,6 @@ function roundCoord(value) {
       formatChips,
       el('p', { class: 'hint' }, 'Address text, coordinates, Maps link, QR code, or an embedded map.'),
     ),
-    insertBtn,
     status,
     resultSection,
   );

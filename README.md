@@ -4,6 +4,8 @@ An Edge Delivery Services / Experience Workspace plugin that lets authors find a
 
 Plugin files live in [`tools/google-maps/`](tools/google-maps/).
 
+![Google Maps panel with pin, layers, and QR code inserted into the page](docs/readme/plugin-panel.png)
+
 ## Environments
 
 - Preview: https://main--google-maps-plugin--LegoKam.aem.page/
@@ -74,13 +76,17 @@ Open **Panels → Extensions → Google Maps**.
 3. Create an API key. Restrict it with HTTP referrers that include `https://da.live/*`, your `*.aem.page` / `*.aem.live` hosts, and `http://localhost:3000/*` for local work.
 4. In the plugin, open **Settings**, paste the key, **Test key**, then **Save**.
 
+![Plugin Settings: Google Maps API key with a successful Test key](docs/readme/settings.png)
+
 Settings are written to the organisation config’s **secrets** sheet as:
 
-| key                  | example        |
-| -------------------- | -------------- |
+| key                   | example       |
+| --------------------- | ------------- |
 | `google-maps.api-key` | *(your key)*  |
 
 You can also edit that sheet directly at [da.live/config#/legokam/](https://da.live/config#/legokam/) (org config, **secrets** tab). Header row must be `key` / `value`.
+
+![Organisation secrets sheet with google-maps.api-key](docs/readme/secrets.png)
 
 **Security note:** anyone who can read the org config can read the API key. Embed iframes also include the key in the document HTML (normal for Maps Embed API); keep referrer restrictions tight.
 

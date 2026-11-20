@@ -13,6 +13,7 @@ Replace `LegoKam` / `google-maps-plugin` with your org and site names if this re
 
 ## What you get
 
+- **Interactive map** — drop or drag a pin; switch **Overview**, **Satellite**, and **Hybrid** layers
 - **Find a place** — search with Places Autocomplete, enter latitude/longitude, or paste a Google Maps URL
 - **Insert as**
   - **Address** — formatted address text
@@ -22,7 +23,7 @@ Replace `LegoKam` / `google-maps-plugin` with your org and site names if this re
   - **Embed map** — interactive iframe (Maps Embed API when a key is set)
 - **Org-wide settings** — Google Maps API key stored in the organisation’s da.live `secrets` sheet
 
-Without an API key you can still paste a Maps URL or type coordinates and insert address / link / QR / classic embed. Autocomplete, geocoding, and Embed API previews need a key.
+Without an API key you can still paste a Maps URL or type coordinates and insert address / link / QR / classic embed. The interactive map, autocomplete, geocoding, and Embed API need a key.
 
 ## Install
 
@@ -88,7 +89,7 @@ If the config editor tab was already open when you saved from the plugin, reload
 ## Use
 
 1. Open the Google Maps panel in Experience Workspace.
-2. Search for a place (pick a suggestion), enter coordinates, or paste a Maps URL, then **Look up** / **Use coordinates**.
+2. Find a place: search (pick a suggestion), enter coordinates, paste a Maps URL, or **click the map to drop a pin** (drag to adjust). Use **Overview** / **Satellite** / **Hybrid** for map layers.
 3. Choose **Insert as**: Address, Coordinates, Link, QR code, or Embed map.
 4. **Insert at cursor**, or **Replace selection** / **Insert after selection** when text is selected.
 
@@ -104,6 +105,7 @@ npm run lint
 | `tools/google-maps/google-maps.html` | Plugin shell |
 | `tools/google-maps/google-maps.js` | UI and SDK wiring |
 | `tools/google-maps/google-maps.css` | Styles |
+| `tools/google-maps/map-ui.js` | Interactive map, pin, layer controls |
 | `tools/google-maps/location.js` | Place resolution, URLs, insert HTML |
 | `tools/google-maps/secrets.js` | Read/write org `secrets` sheet |
 

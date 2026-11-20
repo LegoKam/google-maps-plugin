@@ -210,12 +210,33 @@ button.quiet {
   overflow-wrap: anywhere;
 }
 
-.map-preview {
+.map-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-panel[hidden] {
+  display: none !important;
+}
+
+.map-canvas {
   width: 100%;
-  height: 180px;
-  border: 0;
+  height: 240px;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
+  overflow: hidden;
+}
+
+.map-layers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.map-hint {
+  margin: 0;
 }
 
 .result-preview {

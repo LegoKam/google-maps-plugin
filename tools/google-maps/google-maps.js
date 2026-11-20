@@ -3,7 +3,6 @@ import DA_SDK from 'https://da.live/nx/utils/sdk.js';
 import {
   FORMATS,
   buildInsertHtml,
-  embedSrc,
   formatSummary,
   geocodeQuery,
   isValidCoords,
@@ -15,6 +14,7 @@ import {
   placeToLocation,
   reverseGeocode,
 } from './location.js';
+import { MAP_LAYERS, createMapPicker } from './map-ui.js';
 import { loadSettings, saveSettings } from './secrets.js';
 
 function el(tag, props = {}, ...children) {
@@ -38,6 +38,10 @@ function setStatus(node, message = '', type = 'info') {
   node.hidden = !message;
 }
 
+function roundCoord(value) {
+  return Math.round(Number(value) * 1e6) / 1e6;
+}
+
 (async function init() {
   const sdk = await DA_SDK;
   const { context, actions } = sdk;
@@ -51,12 +55,17 @@ function setStatus(node, message = '', type = 'info') {
     settings: { apiKey: '' },
     location: null,
     format: 'link',
+    mapLayer: 'overview',
     selection: '',
     result: '',
     resultMeta: null,
     loadFailed: false,
     autocompleteReady: false,
+    mapReady: false,
+    pinBusy: false,
   };
+
+  let mapPicker = null;
 
   /* ---------- Main view ---------- */
 
@@ -77,13 +86,21 @@ function setStatus(node, message = '', type = 'info') {
   const resolveBtn = el('button', { type: 'button' }, 'Look up');
   const formatChips = el('div', { class: 'chips' });
   const locationCard = el('div', { class: 'location-card empty' });
-  const mapPreview = el('iframe', {
-    class: 'map-preview',
-    title: 'Map preview',
-    loading: 'lazy',
-    referrerpolicy: 'strict-origin-when-cross-origin',
-    hidden: true,
-  });
+  const mapCanvas = el('div', { class: 'map-canvas', role: 'application', 'aria-label': 'Map with draggable pin' });
+  const layerChips = el('div', { class: 'map-layers chips' });
+  const mapHint = el('p', { class: 'hint map-hint' }, 'Click the map to drop a pin, or drag the pin to fine-tune.');
+  const mapPanel = el(
+    'div',
+    { class: 'map-panel', hidden: true },
+    mapCanvas,
+    layerChips,
+    mapHint,
+  );
+  const mapFallback = el(
+    'p',
+    { class: 'hint' },
+    'Add a Google Maps API key in Settings to show the interactive map, drop a pin, and switch layers.',
+  );
   const insertBtn = el('button', { type: 'button', class: 'primary', disabled: true }, 'Insert');
   const status = el('p', { class: 'status', role: 'status', hidden: true });
   const resultPreview = el('div', { class: 'result-preview' });
@@ -162,6 +179,27 @@ function setStatus(node, message = '', type = 'info') {
     }, label)));
   }
 
+  function renderLayers() {
+    layerChips.replaceChildren(...MAP_LAYERS.map(({ id, label }) => el('button', {
+      type: 'button',
+      class: `chip${state.mapLayer === id ? ' is-active' : ''}`,
+      onclick: () => {
+        state.mapLayer = id;
+        mapPicker?.setLayer(id);
+        renderLayers();
+      },
+    }, label)));
+  }
+
+  function syncMapPin(location, { pan = true } = {}) {
+    if (!mapPicker) return;
+    if (location && isValidCoords(location.lat, location.lng)) {
+      mapPicker.dropPin(location.lat, location.lng, { pan, zoom: pan });
+    } else {
+      mapPicker.clearPin();
+    }
+  }
+
   function renderLocation() {
     const { location } = state;
     locationCard.classList.toggle('empty', !location);
@@ -169,10 +207,8 @@ function setStatus(node, message = '', type = 'info') {
       locationCard.replaceChildren(el(
         'p',
         {},
-        'No place selected yet. Search, enter coordinates, or paste a Google Maps link.',
+        'No place selected yet. Search, drop a pin on the map, enter coordinates, or paste a Google Maps link.',
       ));
-      mapPreview.hidden = true;
-      mapPreview.removeAttribute('src');
       insertBtn.disabled = true;
       return;
     }
@@ -180,7 +216,7 @@ function setStatus(node, message = '', type = 'info') {
     const bits = [];
     if (location.address) bits.push(location.address);
     if (isValidCoords(location.lat, location.lng)) {
-      bits.push(`${location.lat}, ${location.lng}`);
+      bits.push(`${roundCoord(location.lat)}, ${roundCoord(location.lng)}`);
     }
     locationCard.replaceChildren(
       el('div', { class: 'location-name' }, locationLabel(location)),
@@ -193,31 +229,95 @@ function setStatus(node, message = '', type = 'info') {
         }, 'Open in Google Maps')
         : null,
     );
-
-    const previewSrc = embedSrc(location, state.settings.apiKey);
-    if (previewSrc) {
-      mapPreview.src = previewSrc;
-      mapPreview.hidden = false;
-    } else {
-      mapPreview.hidden = true;
-      mapPreview.removeAttribute('src');
-    }
     insertBtn.disabled = false;
   }
 
-  function setLocation(location) {
+  function setLocation(location, { syncPin = true, pan = true } = {}) {
     state.location = location;
     state.result = '';
     state.resultMeta = null;
     resultSection.hidden = true;
     if (location && isValidCoords(location.lat, location.lng)) {
-      latInput.value = String(location.lat);
-      lngInput.value = String(location.lng);
+      latInput.value = String(roundCoord(location.lat));
+      lngInput.value = String(roundCoord(location.lng));
     }
-    if (location?.address && !searchInput.value.trim()) {
+    if (location?.address && document.activeElement !== searchInput) {
       searchInput.value = location.address;
     }
     renderLocation();
+    if (syncPin) syncMapPin(location, { pan });
+  }
+
+  async function onPinChange({ lat, lng }) {
+    if (state.pinBusy) return;
+    state.pinBusy = true;
+    latInput.value = String(roundCoord(lat));
+    lngInput.value = String(roundCoord(lng));
+    setStatus(status, 'Resolving pin…');
+    try {
+      let location;
+      if (state.settings.apiKey) {
+        location = await reverseGeocode(state.settings.apiKey, lat, lng);
+      } else {
+        location = {
+          name: '',
+          address: '',
+          lat,
+          lng,
+          placeId: '',
+          mapsUrl: '',
+        };
+      }
+      setLocation(location, { syncPin: false });
+      setStatus(status);
+      await prepareInsert();
+    } catch (error) {
+      setLocation({
+        name: '',
+        address: '',
+        lat,
+        lng,
+        placeId: '',
+        mapsUrl: '',
+      }, { syncPin: false });
+      setStatus(status, error.message, 'error');
+      await prepareInsert();
+    } finally {
+      state.pinBusy = false;
+    }
+  }
+
+  async function ensureMap() {
+    if (!state.settings.apiKey) {
+      mapPanel.hidden = true;
+      mapFallback.hidden = false;
+      return;
+    }
+    mapFallback.hidden = true;
+    mapPanel.hidden = false;
+    if (mapPicker) {
+      mapPicker.resize();
+      syncMapPin(state.location);
+      return;
+    }
+    if (state.mapReady) return;
+    state.mapReady = true;
+    try {
+      mapPicker = await createMapPicker(mapCanvas, {
+        apiKey: state.settings.apiKey,
+        layer: state.mapLayer,
+        onPinChange,
+      });
+      renderLayers();
+      syncMapPin(state.location);
+      mapPicker.resize();
+    } catch (error) {
+      state.mapReady = false;
+      mapPicker = null;
+      mapPanel.hidden = true;
+      mapFallback.hidden = false;
+      setStatus(status, error.message, 'error');
+    }
   }
 
   async function refreshSelection() {
@@ -323,7 +423,7 @@ function setStatus(node, message = '', type = 'info') {
         placeId: '',
         mapsUrl: '',
       });
-      setStatus(status, 'Saved as an address. Add an API key in Settings to geocode and autocomplete.', 'info');
+      setStatus(status, 'Saved as an address. Add an API key in Settings to geocode, autocomplete, and drop a pin.', 'info');
       await prepareInsert();
       return;
     }
@@ -356,7 +456,6 @@ function setStatus(node, message = '', type = 'info') {
         prepareInsert();
       });
       state.autocompleteReady = true;
-      notice.hidden = true;
     } catch (error) {
       setStatus(status, error.message, 'error');
     }
@@ -367,8 +466,14 @@ function setStatus(node, message = '', type = 'info') {
     notice.hidden = hasKey || state.loadFailed;
     notice.textContent = hasKey
       ? ''
-      : 'No Google Maps API key yet. You can still paste a Maps URL or enter coordinates. Open Settings to enable place search and Embed API maps.';
-    if (hasKey) setupAutocomplete();
+      : 'No Google Maps API key yet. You can still paste a Maps URL or enter coordinates. Open Settings to enable the interactive map, place search, and Embed API.';
+    if (hasKey) {
+      setupAutocomplete();
+      ensureMap();
+    } else {
+      mapPanel.hidden = true;
+      mapFallback.hidden = false;
+    }
   }
 
   resolveBtn.addEventListener('click', resolveFromSearch);
@@ -413,9 +518,14 @@ function setStatus(node, message = '', type = 'info') {
     el(
       'section',
       {},
-      el('h2', {}, 'Selected location'),
+      el(
+        'div',
+        { class: 'section-head' },
+        el('h2', {}, 'Map'),
+      ),
+      mapPanel,
+      mapFallback,
       locationCard,
-      mapPreview,
     ),
     el(
       'section',
@@ -477,6 +587,9 @@ function setStatus(node, message = '', type = 'info') {
       state.settings = await saveSettings({ org, token, settings });
       state.loadFailed = false;
       state.autocompleteReady = false;
+      state.mapReady = false;
+      mapPicker = null;
+      mapCanvas.replaceChildren();
       fillForm();
       renderConfigured();
       setStatus(settingsStatus, `Saved for everyone in ${org}.`, 'success');
@@ -516,6 +629,7 @@ function setStatus(node, message = '', type = 'info') {
         onclick: () => {
           settingsView.hidden = true;
           mainView.hidden = false;
+          mapPicker?.resize();
         },
       }, 'Back'),
     ),
@@ -536,9 +650,13 @@ function setStatus(node, message = '', type = 'info') {
   /* ---------- Start ---------- */
 
   renderFormats();
+  renderLayers();
   renderLocation();
   document.body.append(mainView, settingsView);
-  document.documentElement.addEventListener('pointerenter', refreshSelection);
+  document.documentElement.addEventListener('pointerenter', () => {
+    refreshSelection();
+    mapPicker?.resize();
+  });
   refreshSelection();
 
   try {

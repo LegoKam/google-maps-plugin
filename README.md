@@ -4,7 +4,7 @@ An Edge Delivery Services / Experience Workspace plugin that lets authors find a
 
 Plugin files live in [`tools/google-maps/`](tools/google-maps/).
 
-![Google Maps panel with pin, layers, and QR code inserted into the page](docs/readme/plugin-panel.png)
+![Google Maps panel with a dropped pin and Link ready to Insert at cursor](docs/readme/plugin-panel.png)
 
 ## Environments
 
@@ -70,10 +70,32 @@ Open **Panels → Extensions → Google Maps**.
 
 ## Configure Google Maps
 
+### 1. Google Cloud API key
+
 1. In [Google Cloud Console](https://console.cloud.google.com/) create (or reuse) a project with billing enabled.
-2. Enable **Maps JavaScript API**, **Places API**, and **Geocoding API**.
-3. Create an API key. Restrict it with HTTP referrers that include `https://da.live/*`, your `*.aem.page` / `*.aem.live` hosts, and `http://localhost:3000/*` for local work.
-4. In the plugin, open **Settings**, paste the key, **Test key**, then **Save**.
+2. Enable **Maps JavaScript API**, **Places API (New)**, and **Geocoding API**.
+3. Create an API key (APIs & Services → Credentials → Create credentials → API key), then open **Edit API key**.
+4. Under **API restrictions**, choose **Restrict key** and select at least:
+   - Geocoding API
+   - Maps JavaScript API
+   - Places API (New)
+5. Under **Application restrictions**, choose **Websites** and add HTTP referrers such as:
+
+   | Website restriction |
+   | ------------------- |
+   | `https://da.live/*` |
+   | `*.preview.da.live/*` |
+   | `http://localhost:3000/*` |
+   | `https://*.aem.live/*` |
+   | `https://*.aem.page/*` |
+
+   Add your site’s preview host if needed (for example `https://main--google-maps-plugin--legokam.preview.da.live/`). Changes can take up to a few minutes.
+
+![Google Cloud Console: Edit API key with website restrictions for da.live, AEM, and localhost](docs/readme/api-key-setup.png)
+
+### 2. Save the key for the organisation
+
+In the plugin, open **Settings**, paste the key, **Test key**, then **Save**.
 
 ![Plugin Settings: Google Maps API key with a successful Test key](docs/readme/settings.png)
 
@@ -87,7 +109,7 @@ You can also edit that sheet directly at [da.live/config#/legokam/](https://da.l
 
 ![Organisation secrets sheet with google-maps.api-key](docs/readme/secrets.png)
 
-**Security note:** anyone who can read the org config can read the API key. Prefer HTTP-referrer restrictions on the key.
+**Security note:** anyone who can read the org config can read the API key. Keep **Websites** referrer restrictions on the key as shown above.
 
 If the config editor tab was already open when you saved from the plugin, reload it before pressing Save there — a stale empty sheet can overwrite the plugin’s rows.
 
